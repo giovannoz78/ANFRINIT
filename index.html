@@ -433,38 +433,29 @@ function drawPyramid(ax,ay,az, bx,bz, bs, comp, r,g,b, alpha) {
     ctx.beginPath(); ctx.moveTo(p1.sx,p1.sy); ctx.lineTo(p2.sx,p2.sy); ctx.stroke();
   }
 
-  // ── PARTÍCULAS INLINE ── mismos av[] que las líneas, garantizado ──
-  // Fase global driven by frame → posición suave 0→1 cíclica
-  const ph  = (frame * 0.009) % 1.0;   // lateral
-  const ph2 = (frame * 0.011 + 0.5) % 1.0; // base (offset para no solapar)
+  // ── PARTÍCULAS INLINE cian eléctrico ──────────────────────────
+  const ph  = (frame * 0.009) % 1.0;
+  const ph2 = (frame * 0.011 + 0.5) % 1.0;
 
   // 4 aristas laterales: ápice → av[i]
   for (let i=0; i<4; i++) {
-    const hue = ((i*90) + frame*0.4) % 360;
-    const [er,eg,eb] = hslToRgb(hue/360, 1.0, 0.82);
-    // 4 partículas escalonadas por arista
     for (let k=0; k<4; k++) {
       const t2 = (ph + k*0.25) % 1.0;
-      // interpola en world space entre ápice y esquina, exacto igual que la línea
       const px = ax + (av[i][0]-ax)*t2;
       const py = ay + (av[i][1]-ay)*t2;
       const pz = az + (av[i][2]-az)*t2;
-      const fa = Math.sin(t2*Math.PI)*0.95;
-      glowDot3(px,py,pz, 5.5, er,eg,eb, fa);
+      glowDot3(px,py,pz, 5.5, 0,230,255, Math.sin(t2*Math.PI)*0.95);
     }
   }
   // 4 aristas de base: av[i] → av[i+1]
   for (let i=0; i<4; i++) {
     const c1=av[i], c2=av[(i+1)%4];
-    const hue = ((i*45+200) + frame*0.4) % 360;
-    const [er,eg,eb] = hslToRgb(hue/360, 0.95, 0.78);
     for (let k=0; k<3; k++) {
       const t2 = (ph2 + k/3) % 1.0;
       const px = c1[0]+(c2[0]-c1[0])*t2;
       const py = c1[1]+(c2[1]-c1[1])*t2;
       const pz = c1[2]+(c2[2]-c1[2])*t2;
-      const fa = Math.sin(t2*Math.PI)*0.85;
-      glowDot3(px,py,pz, 4, er,eg,eb, fa);
+      glowDot3(px,py,pz, 4, 0,230,255, Math.sin(t2*Math.PI)*0.85);
     }
   }
   if (comp>.3) {
