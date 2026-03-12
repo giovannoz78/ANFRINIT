@@ -502,19 +502,17 @@ function drawParticles() {
     const e=emotions[i];
 
     if (e.onEdge) {
-      // ── partícula mapeada sobre arista de pirámide ──
       e.edgeT = Math.min(1, e.edgeT + e.edgeSpeed);
-      e.x = e.sx + (e.ex - e.sx) * e.edgeT;
-      e.y = e.sy + (e.ey - e.sy) * e.edgeT;
-      e.z = e.sz + (e.ez - e.sz) * e.edgeT;
+      // usa x0/y0/z0 → x1/y1/z1 (sin colisión con sz=tamaño)
+      e.x = e.x0 + (e.x1 - e.x0) * e.edgeT;
+      e.y = e.y0 + (e.y1 - e.y0) * e.edgeT;
+      e.z = e.z0 + (e.z1 - e.z0) * e.edgeT;
       e.life--;
       if (e.edgeT >= 1 || e.life <= 0) { emotions.splice(i,1); continue; }
-      // brillo intenso al inicio, desvanece al llegar al destino
-      const a = Math.min(1.0, (e.life/e.maxLife) * 1.6);
+      const a = Math.min(1.0, (e.life/e.maxLife) * 1.8);
       glowDot3(e.x, e.y, e.z, e.sz, e.r, e.g, e.b, a);
 
     } else {
-      // ── partícula libre (comportamiento original) ──
       e.vx+=(Math.sin(e.x*.01+frame*.01+33)*.5+.5-.5)*(e.ctrl?.2:.5);
       e.vy+=e.ctrl?.15:-.03;
       e.vz+=(Math.sin(e.z*.01+frame*.01+77)*.5+.5-.5)*(e.ctrl?.2:.5);
@@ -609,12 +607,12 @@ function spawnPyramidEdgeParts(t, comp) {
     const mL  = 80 + Math.floor(Math.random()*40);
     emotions.push({
       onEdge: true,
-      sx: ax,   sy: ay,   sz: az,
-      ex: c[0], ey: c[1], ez: c[2],
+      x0: ax,   y0: ay,   z0: az,    // origen = ápice
+      x1: c[0], y1: c[1], z1: c[2],  // destino = esquina
       edgeT: 0, edgeSpeed: 0.010 + Math.random()*0.012,
       x: ax, y: ay, z: az,
       life: mL, maxLife: mL,
-      sz: 4 + Math.random()*3,
+      sz: 4 + Math.random()*3,        // TAMAÑO, sin colisión
       r, g, b, ctrl: false
     });
   }
@@ -628,8 +626,8 @@ function spawnPyramidEdgeParts(t, comp) {
     const mL  = 60 + Math.floor(Math.random()*35);
     emotions.push({
       onEdge: true,
-      sx: c1[0], sy: c1[1], sz: c1[2],
-      ex: c2[0], ey: c2[1], ez: c2[2],
+      x0: c1[0], y0: c1[1], z0: c1[2],  // origen = esquina i
+      x1: c2[0], y1: c2[1], z1: c2[2],  // destino = esquina i+1
       edgeT: 0,  edgeSpeed: 0.012 + Math.random()*0.016,
       x: c1[0], y: c1[1], z: c1[2],
       life: mL, maxLife: mL,
