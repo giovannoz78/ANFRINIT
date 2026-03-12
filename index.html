@@ -252,7 +252,7 @@ function modeSel(comp) {
   drawTLSel(TL[selIdx]);
   drawPyramidFromTL(TL[selIdx], comp);
   if (frame%15===0) spawnPart(TL[selIdx], false);
-  if (frame%8===0)  spawnPyramidEdgeParts(TL[selIdx]);
+  if (frame%8===0)  spawnPyramidEdgeParts(TL[selIdx], comp);
 }
 
 function modeFull() {
@@ -261,7 +261,7 @@ function modeFull() {
   drawPyramidFromTL(TL[selIdx], 1.0);
   drawGrid(TL[selIdx]);
   if (frame%6===0)  spawnPart(TL[selIdx], false);
-  if (frame%5===0)  spawnPyramidEdgeParts(TL[selIdx]);
+  if (frame%5===0)  spawnPyramidEdgeParts(TL[selIdx], 1.0);
 }
 
 function modeMatrix() {
@@ -278,7 +278,7 @@ function modeMatrix() {
     });
   }
   if (frame%4===0)  spawnPart(TL[selIdx], true);
-  if (frame%6===0)  spawnPyramidEdgeParts(TL[selIdx]);
+  if (frame%6===0)  spawnPyramidEdgeParts(TL[selIdx], 1.0);
 }
 
 function modeLiberation() {
@@ -294,7 +294,7 @@ function modeLiberation() {
   matrixOn=false;
   for (const m of mThreads) m.breaking=true;
   if (frame%7===0)  spawnPart(TL[Math.floor(Math.random()*TL.length)], false);
-  if (frame%9===0)  spawnPyramidEdgeParts(TL[selIdx]);
+  if (frame%9===0)  spawnPyramidEdgeParts(TL[selIdx], 1.0 - consLv*0.7);
   drawConSphere(consLv);
 }
 
@@ -579,55 +579,61 @@ function spawnPart(t, ctrl) {
 }
 
 // ── PARTÍCULAS MAPEADAS EN ARISTAS DE PIRÁMIDE ─────────────────
-// Genera partículas que deslizan por las 8 aristas: 4 laterales + 4 de base
-function spawnPyramidEdgeParts(t) {
-  const bs  = 120 * PHI;
-  const by  = 200;
-  const ax  = t.x, ay = t.y, az = t.z;
+// comp: MISMO factor que usa drawPyramid para que las coords coincidan exactamente
+function spawnPyramidEdgeParts(t, comp) {
+  comp = (comp !== undefined) ? comp : 1.0;
+  const bs = 120 * PHI;
+  const by = 200;
+  const ax = t.x, ay = t.y, az = t.z;
 
-  // 4 esquinas de la base
-  const corners = [
+  // Corners raw (base completa)
+  const raw = [
     [ax-bs, by, az-bs],
     [ax+bs, by, az-bs],
     [ax+bs, by, az+bs],
     [ax-bs, by, az+bs]
   ];
 
-  // ── Aristas laterales: ápice → esquina ──
+  // Aplicar comp exactamente igual que drawPyramid: apex + (corner-apex)*comp
+  const corners = raw.map(v => [
+    ax + (v[0]-ax)*comp,
+    ay + (v[1]-ay)*comp,
+    az + (v[2]-az)*comp
+  ]);
+
+  // ── 4 Aristas laterales: ápice → esquina ──
   for (let i=0; i<4; i++) {
-    if (Math.random() > 0.65) continue; // spawn estocástico
     const c   = corners[i];
     const hue = (t.fibIdx*137.5 + i*90) % 360;
-    const [r,g,b] = hslToRgb(hue/360, 0.92, 0.82);
-    const mL  = 50 + Math.floor(Math.random()*35);
-    const t0  = Math.random()*0.25; // arranca cerca del ápice
+    const [r,g,b] = hslToRgb(hue/360, 0.95, 0.85);
+    const mL  = 80 + Math.floor(Math.random()*40);
     emotions.push({
       onEdge: true,
-      sx: ax,    sy: ay,    sz: az,
-      ex: c[0],  ey: c[1],  ez: c[2],
-      edgeT: t0, edgeSpeed: 0.010 + Math.random()*0.016,
+      sx: ax,   sy: ay,   sz: az,
+      ex: c[0], ey: c[1], ez: c[2],
+      edgeT: 0, edgeSpeed: 0.010 + Math.random()*0.012,
       x: ax, y: ay, z: az,
       life: mL, maxLife: mL,
-      sz: 2.2 + Math.random()*2.5,
+      sz: 4 + Math.random()*3,
       r, g, b, ctrl: false
     });
   }
 
-  // ── Aristas de base: esquina[i] → esquina[i+1] ──
+  // ── 4 Aristas de base: esquina[i] → esquina[i+1] ──
   for (let i=0; i<4; i++) {
-    if (Math.random() > 0.5) continue;
-    const c1  = corners[i], c2 = corners[(i+1)%4];
+    if (Math.random() > 0.6) continue;
+    const c1 = corners[i], c2 = corners[(i+1)%4];
     const hue = (t.fibIdx*137.5 + i*45 + 200) % 360;
-    const [r,g,b] = hslToRgb(hue/360, 0.88, 0.78);
-    const mL  = 35 + Math.floor(Math.random()*30);
+    const [r,g,b] = hslToRgb(hue/360, 0.90, 0.80);
+    const mL  = 60 + Math.floor(Math.random()*35);
     emotions.push({
       onEdge: true,
       sx: c1[0], sy: c1[1], sz: c1[2],
       ex: c2[0], ey: c2[1], ez: c2[2],
-      edgeT: 0,  edgeSpeed: 0.014 + Math.random()*0.020,
+      edgeT: 0,  edgeSpeed: 0.012 + Math.random()*0.016,
       x: c1[0], y: c1[1], z: c1[2],
       life: mL, maxLife: mL,
-      sz: 1.8 + Math.random()*2.0,
+      sz: 3 + Math.random()*2.5,
       r, g, b, ctrl: false
     });
   }
