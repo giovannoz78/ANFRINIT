@@ -42,7 +42,7 @@ canvas { position:fixed; top:0; left:0; z-index:1; }
 <canvas id="c"></canvas>
 <div id="hud">
   <h2>REALIDAD HOLOGRÁFICA – Fibonacci &amp; Proporción Áurea</h2>
-  <div>ESPACIO: modo | R: rotación | S: timeline | C: limpiar | F: Fibonacci</div>
+  <div>ESPACIO: modo | R: rotación | S: timeline | C: limpiar | F: Fibonacci | H: ocultar HUD</div>
   <div>+/-: frecuencia | ←→: velocidad partículas | ↑↓: cantidad partículas</div>
   <div>B: romper hilos | W: consciencia (Modo 4) | DRAG: orbitar | CLICK: pirámide</div>
   <div id="mode">Modo: CAMPO HOLOGRÁFICO</div>
@@ -110,6 +110,7 @@ let showFib=true;
 // ← flechas: velocidad y cantidad de partículas emocionales
 let partSpeed=0.5;   // ←→  rango 0.1–2.0  (default suave)
 let partDensity=0.5; // ↑↓  rango 0.1–2.0  (default moderado)
+let hudVisible=true;
 const emotions=[], mThreads=[], xPyrs=[];
 
 const TL=[];
@@ -600,7 +601,7 @@ document.addEventListener('touchmove',e=>{
 
 document.addEventListener('keydown',e=>{
   const k=e.key,c=e.code;
-  const appKeys=[' ','r','R','s','S','c','C','b','B','w','W','f','F','+','=','-','_'];
+  const appKeys=[' ','r','R','s','S','c','C','b','B','w','W','f','F','h','H','+','=','-','_'];
   const appCodes=['Equal','Minus','NumpadAdd','NumpadSubtract','BracketRight','Slash',
                   'ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
   if(appKeys.includes(k)||appCodes.includes(c)) e.preventDefault();
@@ -624,6 +625,13 @@ document.addEventListener('keydown',e=>{
   if(k==='b'||k==='B'){ for(const m of mThreads) m.breaking=true;matrixOn=false; }
   if(k==='w'||k==='W'){ viewMode=4;matrixOn=false;consLv=Math.min(1,consLv+.1); }
   if(k==='f'||k==='F') showFib=!showFib;
+  if(k==='h'||k==='H'){
+    hudVisible=!hudVisible;
+    const d=hudVisible?'block':'none';
+    document.getElementById('hud').style.display=d;
+    document.getElementById('hud-r').style.display=d;
+    document.getElementById('freqbar').style.display=d;
+  }
 });
 
 updatePaletteTargets(); // inicializar colores del modo 0
