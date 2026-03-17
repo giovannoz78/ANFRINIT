@@ -67,6 +67,26 @@ const PHI = 1.618033988749895;
 const FIB = [1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,2584,4181,6765];
 const MODES = ["CAMPO HOLOGRÁFICO","PROYECCIÓN SELECCIONADA","PROYECCIÓN COMPLETA","MATRIZ EMOCIONAL","LIBERACIÓN"];
 
+// ── PALETAS CROMÁTICAS por modo ────────────────────────────────
+// Cada paleta: { hueShift, sat, light, hueCompress }
+// hueCompress: 1=arcoiris completo, <1=comprimir hacia un tono central
+const PALETTES = [
+  { hueShift:0,   sat:0.85, light:0.72, compress:1.0,  name:"Arcoiris Fibonacci"   }, // 0 Campo
+  { hueShift:200, sat:0.90, light:0.65, compress:0.35, name:"Azul Cuántico"         }, // 1 Proyección sel.
+  { hueShift:130, sat:0.95, light:0.62, compress:0.40, name:"Esmeralda Geométrica"  }, // 2 Proyección comp.
+  { hueShift:320, sat:1.00, light:0.58, compress:0.45, name:"Rojo Emocional"        }, // 3 Matriz
+  { hueShift:45,  sat:0.70, light:0.88, compress:0.30, name:"Dorado Transcendente"  }, // 4 Liberación
+];
+
+// Función: dado el fibIdx y la paleta, devuelve [r,g,b] objetivo
+function paletteColor(fibIdx, pal) {
+  const baseHue = (fibIdx * 137.5) % 360;
+  // comprimir el arcoiris hacia el hueShift central
+  const compressed = pal.hueShift + (baseHue - 180) * pal.compress;
+  const h = ((compressed % 360) + 360) % 360;
+  return hslToRgb(h/360, pal.sat, pal.light);
+}
+
 // Qué controla +/- en cada modo — visible en HUD
 const FREQ_DESC = [
   "[+/-] densidad de conexiones entre nodos",
@@ -99,7 +119,18 @@ for (let i=0;i<34;i++) {
   const hue=(i*137.5)%360;
   const [r,g,b]=hslToRgb(hue/360,0.85,0.72);
   TL.push({ x:Math.cos(angle)*radius, y:-150+(Math.random()*80-40), z:Math.sin(angle)*radius,
-            r,g,b, fibIdx:i, phase:Math.random()*Math.PI*2 });
+            r,g,b,          // color actual (se lerp cada frame)
+            tr:r,tg:g,tb:b, // color objetivo (se actualiza al cambiar modo)
+            fibIdx:i, phase:Math.random()*Math.PI*2 });
+}
+
+// Precalcular los colores objetivo de todos los nodos para el modo actual
+function updatePaletteTargets() {
+  const pal = PALETTES[viewMode];
+  for (let i=0;i<TL.length;i++) {
+    const [tr,tg,tb] = paletteColor(TL[i].fibIdx, pal);
+    TL[i].tr=tr; TL[i].tg=tg; TL[i].tb=tb;
+  }
 }
 
 function project(x,y,z) {
@@ -158,6 +189,14 @@ function loop() {
     if(d<minD){ hovIdx=i; minD=d; }
   }
   glowI+=((hovIdx>=0?3.5:1.0)-glowI)*0.15;
+
+  // ── Lerp colores de nodos hacia la paleta del modo actual ──
+  const LERP = 0.025; // velocidad de transición (más bajo = más suave)
+  for(let i=0;i<TL.length;i++){
+    TL[i].r += (TL[i].tr - TL[i].r) * LERP;
+    TL[i].g += (TL[i].tg - TL[i].g) * LERP;
+    TL[i].b += (TL[i].tb - TL[i].b) * LERP;
+  }
 
   if(showFib) drawSpirals();
   if     (viewMode===0) modeField();
@@ -400,7 +439,15 @@ function drawGrid(t) {
 }
 
 function drawSpirals() {
-  const cols=[[120,180,255],[80,230,240],[210,160,255]];
+  // Colores de espirales basados en la paleta activa del modo
+  const pal=PALETTES[viewMode];
+  const spiralHues=[
+    ((pal.hueShift         )%360+360)%360,
+    ((pal.hueShift+120     )%360+360)%360,
+    ((pal.hueShift+240     )%360+360)%360,
+  ];
+  const cols=spiralHues.map(h=>hslToRgb(h/360, Math.min(1,pal.sat+0.05), Math.min(1,pal.light+0.1)));
+
   for(let s=0;s<3;s++){
     const off=s*Math.PI*2/3,pts=[];
     for(let i=0;i<100;i++){
@@ -412,7 +459,8 @@ function drawSpirals() {
       if(p) pts.push(p);
     }
     if(pts.length<2) continue;
-    ctx.strokeStyle=`rgba(${cols[s][0]},${cols[s][1]},${cols[s][2]},0.65)`; ctx.lineWidth=1.5;
+    const [cr,cg,cb]=cols[s];
+    ctx.strokeStyle=`rgba(${cr|0},${cg|0},${cb|0},0.65)`; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.moveTo(pts[0].sx,pts[0].sy);
     for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].sx,pts[i].sy); ctx.stroke();
   }
@@ -515,11 +563,10 @@ function updateHUD(){
   document.getElementById('freq').textContent='Frec. emocional: '+emoFreq.toFixed(2)+' | Hilos: '+mThreads.length;
   document.getElementById('cons').textContent='Consciencia: '+(consLv*100).toFixed(0)+'%';
   document.getElementById('freqdesc').textContent=FREQ_DESC[viewMode];
-  // Partículas: velocidad y cantidad
-  const velBar='█'.repeat(Math.round(partSpeed*5))+'░'.repeat(10-Math.round(partSpeed*5));
-  const denBar='█'.repeat(Math.round(partDensity*5))+'░'.repeat(10-Math.round(partDensity*5));
+  // Nombre de la paleta activa
+  const pal=PALETTES[viewMode];
   document.getElementById('partdesc').textContent=
-    '← → velocidad: '+partSpeed.toFixed(1)+' '+velBar+'  |  ↑ ↓ cantidad: '+partDensity.toFixed(1)+' '+denBar;
+    '🎨 '+pal.name+' · ← → vel: '+partSpeed.toFixed(1)+'  ↑ ↓ cant: '+partDensity.toFixed(1);
   document.getElementById('freqval').textContent=emoFreq.toFixed(2);
   document.getElementById('freqbar-fill').style.width=(emoFreq*100)+'%';
 }
@@ -558,7 +605,7 @@ document.addEventListener('keydown',e=>{
                   'ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
   if(appKeys.includes(k)||appCodes.includes(c)) e.preventDefault();
 
-  if(k===' '){ viewMode=(viewMode+1)%5; if(viewMode===3){matrixOn=true;mThreads.length=0;} if(viewMode===4){consLv=0;matrixOn=false;} }
+  if(k===' '){ viewMode=(viewMode+1)%5; if(viewMode===3){matrixOn=true;mThreads.length=0;} if(viewMode===4){consLv=0;matrixOn=false;} updatePaletteTargets(); }
   if(k==='r'||k==='R') autoRot=!autoRot;
   if(k==='s'||k==='S') selIdx=Math.floor(Math.random()*TL.length);
   if(k==='c'||k==='C'){ emotions.length=0;xPyrs.length=0; }
@@ -579,6 +626,7 @@ document.addEventListener('keydown',e=>{
   if(k==='f'||k==='F') showFib=!showFib;
 });
 
+updatePaletteTargets(); // inicializar colores del modo 0
 loop();
 </script>
 </body>
