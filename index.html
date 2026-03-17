@@ -249,6 +249,7 @@ function modeFull() {
   drawTLSel(TL[selIdx]);
   drawPyramidFromTL(TL[selIdx],1.0);
   drawGrid(TL[selIdx]);
+  drawBaseWaves(TL[selIdx]);   // ← ondas concéntricas en la base
   const si1=Math.max(1,Math.round(map(emoFreq,0,1,12,2)/partDensity));
   const si2=Math.max(1,Math.round(map(emoFreq,0,1,10,2)/partDensity));
   if(frame%si1===0) spawnPart(TL[selIdx],false);
@@ -436,6 +437,39 @@ function drawGrid(t) {
   for(let i=-10;i<=10;i++){
     stroke3(t.x-300,200,t.z+i*30,t.x+300,200,t.z+i*30,120,180,230,55,.6);
     stroke3(t.x+i*30,200,t.z-300,t.x+i*30,200,t.z+300,120,180,230,55,.6);
+  }
+}
+
+// ── ONDAS CONCÉNTRICAS EN LA BASE ─────────────────────────────
+function drawBaseWaves(t) {
+  const cx=t.x, cz=t.z, cy=200;
+  const segs=48;
+  const pal=PALETTES[viewMode];
+  const numWaves=8;
+  for(let w=0;w<numWaves;w++){
+    const fibR   = FIB[w+2]*12;
+    const speed  = 0.008+w*0.003;
+    const phase  = (fibPh*speed*18 + w/numWaves) % 1.0;
+    const radius = fibR*phase;
+    const alpha  = Math.sin(phase*Math.PI)*0.60;
+    if(alpha<0.02) continue;
+    const hue=((pal.hueShift+w*28)%360+360)%360;
+    const [cr,cg,cb]=hslToRgb(hue/360, pal.sat, Math.min(1,pal.light+0.12));
+    const lw=Math.max(0.4,(1.0-phase)*2.5);
+    const pts=[];
+    for(let i=0;i<=segs;i++){
+      const angle=(i/segs)*Math.PI*2;
+      const p=project(cx+Math.cos(angle)*radius, cy, cz+Math.sin(angle)*radius);
+      if(p) pts.push(p);
+    }
+    if(pts.length<2) continue;
+    ctx.strokeStyle=`rgba(${cr|0},${cg|0},${cb|0},${alpha})`;
+    ctx.lineWidth=lw;
+    ctx.beginPath(); ctx.moveTo(pts[0].sx,pts[0].sy);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].sx,pts[i].sy);
+    ctx.stroke();
+    // destello central en el nacimiento de cada ola
+    if(phase<0.12) glowDot3(cx,cy,cz, 7*(1-phase/0.12), cr,cg,cb, (1-phase/0.12)*0.85);
   }
 }
 
