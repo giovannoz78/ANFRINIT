@@ -43,12 +43,14 @@ canvas { position:fixed; top:0; left:0; z-index:1; }
 <div id="hud">
   <h2>REALIDAD HOLOGRÁFICA – Fibonacci &amp; Proporción Áurea</h2>
   <div>ESPACIO: modo | R: rotación | S: timeline | C: limpiar | F: Fibonacci</div>
-  <div>+/-: frecuencia | B: romper hilos | W: consciencia (Modo 4) | DRAG: orbitar | CLICK: pirámide</div>
+  <div>+/-: frecuencia | ←→: velocidad partículas | ↑↓: cantidad partículas</div>
+  <div>B: romper hilos | W: consciencia (Modo 4) | DRAG: orbitar | CLICK: pirámide</div>
   <div id="mode">Modo: CAMPO HOLOGRÁFICO</div>
   <div id="hover"></div>
   <div id="freq"  style="color:#ff9696;min-height:16px;text-shadow:0 0 8px rgba(255,100,100,0.6);"></div>
   <div id="cons"  style="color:#96ffcc;min-height:16px;text-shadow:0 0 8px rgba(100,255,180,0.6);"></div>
   <div id="freqdesc" style="color:#ffcc80;min-height:16px;font-style:italic;text-shadow:0 0 8px rgba(255,180,80,0.5);"></div>
+  <div id="partdesc" style="color:#aaffee;min-height:16px;text-shadow:0 0 8px rgba(100,255,220,0.5);"></div>
 </div>
 <div id="hud-r">34 líneas · φ = 1.618<br>Ángulo áureo 137.5°<br>Pirámides 4 lados</div>
 
@@ -85,6 +87,9 @@ let viewMode=0, emoFreq=0.3, matrixOn=true, consLv=0, glowI=1.0;
 let fibPh=0, frame=0;
 let selIdx=21, hovIdx=-1;
 let showFib=true;
+// ← flechas: velocidad y cantidad de partículas emocionales
+let partSpeed=0.5;   // ←→  rango 0.1–2.0  (default suave)
+let partDensity=0.5; // ↑↓  rango 0.1–2.0  (default moderado)
 const emotions=[], mThreads=[], xPyrs=[];
 
 const TL=[];
@@ -183,7 +188,9 @@ function modeField() {
   }
   drawTLSel(TL[selIdx]);
   if(hovIdx>=0&&frame%3===0) spawnPart(TL[hovIdx],false);
-  if(frame%18===0) spawnPart(TL[Math.floor(Math.random()*TL.length)],false);
+  // partDensity: más alto = spawn más frecuente
+  const fldInt=Math.max(1,Math.round(18/partDensity));
+  if(frame%fldInt===0) spawnPart(TL[Math.floor(Math.random()*TL.length)],false);
 }
 
 // ── MODO 1: emoFreq → intervalo spawn partículas en aristas ───
@@ -192,7 +199,7 @@ function modeSel(comp) {
   drawTLSel(TL[selIdx]);
   drawPyramidFromTL(TL[selIdx],comp);
   if(frame%15===0) spawnPart(TL[selIdx],false);
-  const si=Math.max(2,Math.round(map(emoFreq,0,1,14,2)));
+  const si=Math.max(1,Math.round(map(emoFreq,0,1,14,2)/partDensity));
   if(frame%si===0) spawnPyramidEdgeParts(TL[selIdx],comp);
 }
 
@@ -202,8 +209,8 @@ function modeFull() {
   drawTLSel(TL[selIdx]);
   drawPyramidFromTL(TL[selIdx],1.0);
   drawGrid(TL[selIdx]);
-  const si1=Math.max(1,Math.round(map(emoFreq,0,1,12,2)));
-  const si2=Math.max(1,Math.round(map(emoFreq,0,1,10,2)));
+  const si1=Math.max(1,Math.round(map(emoFreq,0,1,12,2)/partDensity));
+  const si2=Math.max(1,Math.round(map(emoFreq,0,1,10,2)/partDensity));
   if(frame%si1===0) spawnPart(TL[selIdx],false);
   if(frame%si2===0) spawnPyramidEdgeParts(TL[selIdx],1.0);
 }
@@ -224,7 +231,7 @@ function modeMatrix() {
       prog:0,breaking:false,r:fr,g:fg,b:fb
     });
   }
-  const si=Math.max(1,Math.round(map(emoFreq,0,1,8,2)));
+  const si=Math.max(1,Math.round(map(emoFreq,0,1,8,2)/partDensity));
   if(frame%4===0) spawnPart(TL[selIdx],true);
   if(frame%si===0) spawnPyramidEdgeParts(TL[selIdx],1.0);
 }
@@ -242,8 +249,10 @@ function modeLiberation() {
   drawPyramidFromTL(TL[selIdx],1-consLv*.7);
   matrixOn=false;
   for(const m of mThreads) m.breaking=true;
-  if(frame%7===0) spawnPart(TL[Math.floor(Math.random()*TL.length)],false);
-  if(frame%9===0) spawnPyramidEdgeParts(TL[selIdx],1.0-consLv*0.7);
+  const libInt1=Math.max(1,Math.round(7/partDensity));
+  const libInt2=Math.max(1,Math.round(9/partDensity));
+  if(frame%libInt1===0) spawnPart(TL[Math.floor(Math.random()*TL.length)],false);
+  if(frame%libInt2===0) spawnPyramidEdgeParts(TL[selIdx],1.0-consLv*0.7);
   drawConSphere(consLv);
 }
 
@@ -352,8 +361,8 @@ function drawPyramid(ax,ay,az,bx,bz,bs,comp,r,g,b,alpha) {
     if(!p1||!p2) continue;
     ctx.beginPath(); ctx.moveTo(p1.sx,p1.sy); ctx.lineTo(p2.sx,p2.sy); ctx.stroke();
   }
-  // Partículas inline — velocidad modulada por emoFreq
-  const pSpeed=map(emoFreq,0,1,0.005,0.020);
+  // Partículas inline — velocidad modulada por emoFreq y partSpeed
+  const pSpeed=map(emoFreq,0,1,0.005,0.020)*partSpeed;
   const ph=(frame*pSpeed)%1.0,ph2=(frame*pSpeed*1.2+0.5)%1.0;
   for(let i=0;i<4;i++){
     for(let k=0;k<4;k++){
@@ -449,7 +458,9 @@ function drawThreads() {
 }
 
 function spawnPart(t,ctrl) {
-  const dx=0,dy=200-t.y,dz=0,len=Math.sqrt(dy*dy)||1,sp=2+Math.random()*3;
+  const dx=0,dy=200-t.y,dz=0,len=Math.sqrt(dy*dy)||1;
+  // partSpeed multiplica la velocidad inicial
+  const sp=(2+Math.random()*3)*partSpeed;
   const mL=FIB[5+Math.floor(Math.random()*5)];
   const szBase=map(emoFreq,0,1,2,7);
   let pr,pg,pb;
@@ -457,7 +468,7 @@ function spawnPart(t,ctrl) {
   else { pr=Math.min(255,t.r+40+Math.random()*60); pg=Math.min(255,t.g+40+Math.random()*60); pb=Math.min(255,t.b+40+Math.random()*60); }
   emotions.push({
     x:t.x,y:t.y,z:t.z,
-    vx:(Math.random()-.5)*1.5, vy:dy/len*sp+(Math.random()-.5)*1.5, vz:(Math.random()-.5)*1.5,
+    vx:(Math.random()-.5)*1.5*partSpeed, vy:dy/len*sp+(Math.random()-.5)*1.5*partSpeed, vz:(Math.random()-.5)*1.5*partSpeed,
     life:mL,maxLife:mL, sz:szBase+Math.random()*3, ctrl, r:pr,g:pg,b:pb, onEdge:false
   });
 }
@@ -467,7 +478,8 @@ function spawnPyramidEdgeParts(t,comp) {
   const bs=120*PHI,by=200,ax=t.x,ay=t.y,az=t.z;
   const raw=[[ax-bs,by,az-bs],[ax+bs,by,az-bs],[ax+bs,by,az+bs],[ax-bs,by,az+bs]];
   const corners=raw.map(v=>[ax+(v[0]-ax)*comp,ay+(v[1]-ay)*comp,az+(v[2]-az)*comp]);
-  const eSpeedBase=map(emoFreq,0,1,0.006,0.022);
+  // partSpeed multiplica edgeSpeed en aristas
+  const eSpeedBase=map(emoFreq,0,1,0.006,0.022)*partSpeed;
   for(let i=0;i<4;i++){
     const c=corners[i],hue=(t.fibIdx*137.5+i*90)%360,[r,g,b]=hslToRgb(hue/360,0.95,0.85);
     const mL=80+Math.floor(Math.random()*40);
@@ -503,6 +515,11 @@ function updateHUD(){
   document.getElementById('freq').textContent='Frec. emocional: '+emoFreq.toFixed(2)+' | Hilos: '+mThreads.length;
   document.getElementById('cons').textContent='Consciencia: '+(consLv*100).toFixed(0)+'%';
   document.getElementById('freqdesc').textContent=FREQ_DESC[viewMode];
+  // Partículas: velocidad y cantidad
+  const velBar='█'.repeat(Math.round(partSpeed*5))+'░'.repeat(10-Math.round(partSpeed*5));
+  const denBar='█'.repeat(Math.round(partDensity*5))+'░'.repeat(10-Math.round(partDensity*5));
+  document.getElementById('partdesc').textContent=
+    '← → velocidad: '+partSpeed.toFixed(1)+' '+velBar+'  |  ↑ ↓ cantidad: '+partDensity.toFixed(1)+' '+denBar;
   document.getElementById('freqval').textContent=emoFreq.toFixed(2);
   document.getElementById('freqbar-fill').style.width=(emoFreq*100)+'%';
 }
@@ -537,7 +554,8 @@ document.addEventListener('touchmove',e=>{
 document.addEventListener('keydown',e=>{
   const k=e.key,c=e.code;
   const appKeys=[' ','r','R','s','S','c','C','b','B','w','W','f','F','+','=','-','_'];
-  const appCodes=['Equal','Minus','NumpadAdd','NumpadSubtract','BracketRight','Slash'];
+  const appCodes=['Equal','Minus','NumpadAdd','NumpadSubtract','BracketRight','Slash',
+                  'ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
   if(appKeys.includes(k)||appCodes.includes(c)) e.preventDefault();
 
   if(k===' '){ viewMode=(viewMode+1)%5; if(viewMode===3){matrixOn=true;mThreads.length=0;} if(viewMode===4){consLv=0;matrixOn=false;} }
@@ -549,6 +567,12 @@ document.addEventListener('keydown',e=>{
   const isMinus=k==='-'||k==='_'||c==='Minus'||c==='NumpadSubtract'||c==='Slash';
   if(isPlus)  emoFreq=Math.min(1,emoFreq+0.05);
   if(isMinus) emoFreq=Math.max(0,emoFreq-0.05);
+
+  // ── FLECHAS: velocidad (←→) y cantidad (↑↓) de partículas ──
+  if(k==='ArrowRight') partSpeed  =Math.min(2.0, +(partSpeed  +0.1).toFixed(1));
+  if(k==='ArrowLeft')  partSpeed  =Math.max(0.1, +(partSpeed  -0.1).toFixed(1));
+  if(k==='ArrowUp')    partDensity=Math.min(2.0, +(partDensity+0.1).toFixed(1));
+  if(k==='ArrowDown')  partDensity=Math.max(0.1, +(partDensity-0.1).toFixed(1));
 
   if(k==='b'||k==='B'){ for(const m of mThreads) m.breaking=true;matrixOn=false; }
   if(k==='w'||k==='W'){ viewMode=4;matrixOn=false;consLv=Math.min(1,consLv+.1); }
